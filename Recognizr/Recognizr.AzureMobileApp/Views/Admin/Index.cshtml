@@ -1,13 +1,34 @@
-﻿<!DOCTYPE html>
+﻿@model Recognizr.AzureMobileApp.ViewModels.AdminViewModel
+<!DOCTYPE html>
 
 <html>
 <head>
     <meta name="viewport" content="width=device-width" />
     <title>Recognizr Admin</title>
+    @Scripts.Render("~/bundles/jquery")
 </head>
 <body>
-    <div>
-    
+    <div style="padding: 10px; margin: 20px auto 0px auto; width: 500px; border: 1px solid grey;">
+        @if (!string.IsNullOrEmpty(ViewBag.Message))
+        {
+            <div id="message-div" style="padding:10px; border: 1px solid red;">
+                <b>
+                    @ViewBag.Message
+                </b>
+                <br />
+                <u style="cursor:pointer" onclick="$('#message-div').fadeOut(500)">Dismiss</u>
+            </div>
+        }
+        <h1>Submit New Assignment</h1>
+        @using (Html.BeginForm())
+        {
+            <div>
+                Assignment Text (the object that the user will have to photograph):<br />
+                @Html.TextBoxFor(t => Model.AssignmentText)
+            </div>
+            <br />
+            <button type="submit">Create Assignment and Send Push</button>
+        }
     </div>
 </body>
 </html>

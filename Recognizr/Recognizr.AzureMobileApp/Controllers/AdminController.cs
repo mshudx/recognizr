@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Recognizr.AzureMobileApp.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -8,9 +9,15 @@ namespace Recognizr.AzureMobileApp.Controllers
 {
     public class AdminController : Controller
     {
-        // GET: Admin
         public ActionResult Index()
         {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult Index(AdminViewModel m)
+        {
+            ViewBag.Message = "Assignment has been successfully created!";
             return View();
         }
     }
