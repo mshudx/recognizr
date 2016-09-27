@@ -12,7 +12,7 @@ namespace Recognizr.AzureMobileApp.Models
         {
             // Because the object is derived from TableEntity,
             // it automatically comes with a PartitionKey and a RowKey field.
-            PartitionKey = Guid.NewGuid().ToString();
+            PartitionKey = nameof(Assignment); // put everything in one partition for easy querying
             RowKey = Guid.NewGuid().ToString();
         }
 

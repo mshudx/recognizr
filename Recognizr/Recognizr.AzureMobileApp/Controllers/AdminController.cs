@@ -43,18 +43,27 @@ namespace Recognizr.AzureMobileApp.Controllers
             table.Execute(operation);
 
             // Send out push notification to tell clients
-            var assignmentId = assignment.PartitionKey; // Generated as an unique Guid so RowKey is not necessary
             var message = "New Recognizr challenge!";
 
-            var notificationHub = NotificationHubClient.CreateClientFromConnectionString("NotificationHubConnectionString", "recognizr");
+            var notificationHub = NotificationHubClient.CreateClientFromConnectionString(ConfigurationManager.AppSettings["NotificationHubConnectionString"], "recognizr");
 
-            var windowsNotification = string.Format("<toast launch==\"{0}\"><visual><binding template=\"ToastText01\"><text id=\"1\">{1}</text></binding></visual></toast>", assignmentId, message);
-            var windowsNotificationResult = await notificationHub.SendWindowsNativeNotificationAsync(windowsNotification);
-            var windowsCount = windowsNotificationResult?.Results?.Count ?? 0;
+            int windowsCount = -2;
+            try
+            {
+                var windowsNotification = string.Format("<toast><visual><binding template=\"ToastText01\"><text id=\"1\">{0}</text></binding></visual></toast>", message);
+                var windowsNotificationResult = await notificationHub.SendWindowsNativeNotificationAsync(windowsNotification);
+                windowsCount = windowsNotificationResult?.Results?.Count ?? -1;
+            }
+            catch { }
 
-            var androidNotification = string.Format("{\"data\":{\"assignmentId\":\"{0}\", \"message\":\"{1}\"}}", assignmentId, message);
-            var androidNotificationResult = await notificationHub.SendGcmNativeNotificationAsync(androidNotification);
-            var androidCount = androidNotificationResult?.Results?.Count ?? 0;
+            int androidCount = -2;
+            try
+            {
+                var androidNotification = string.Format("{ \"data\" : {\"message\":\"{0}\"}}", message);
+                var androidNotificationResult = await notificationHub.SendGcmNativeNotificationAsync(androidNotification);
+                androidCount = androidNotificationResult?.Results?.Count ?? -1;
+            }
+            catch { }
 
             ViewBag.Message = string.Format("Assignment has been successfully created, and a push notification was sent out to {0} Windows and {1} Android users!", windowsCount, androidCount);
             return View();

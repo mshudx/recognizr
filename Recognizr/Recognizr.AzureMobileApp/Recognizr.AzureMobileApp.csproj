@@ -242,6 +242,7 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\Startup.MobileApp.cs" />
     <Compile Include="Controllers\AdminController.cs" />
+    <Compile Include="Controllers\ApiController.cs" />
     <Compile Include="Models\Assignment.cs" />
     <Compile Include="Models\Highscore.cs" />
     <Compile Include="Global.asax.cs">
@@ -265,7 +266,9 @@
     </Content>
     <Content Include="Views\Admin\Index.cshtml" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Views\Api\" />
+  </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />
   </ItemGroup>
