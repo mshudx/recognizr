@@ -1,12 +1,16 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using Microsoft.ProjectOxford.Vision;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Recognizr.AzureMobileApp.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
+using System.Web.Http;
 using System.Web.Mvc;
 
 namespace Recognizr.AzureMobileApp.Controllers
@@ -35,10 +39,12 @@ namespace Recognizr.AzureMobileApp.Controllers
             }
         }
 
-        public string SubmitPhoto(string userName, string assignmentRowKey)
+        public async Task<string> SubmitPhoto(string userName, string assignmentRowKey, HttpPostedFileBase photo)
         {
-            var submissionDate = DateTimeOffset.UtcNow; // Save this now because later processes can take several seconds
+            // Save elapsed time now because later processes can take several seconds
+            var submissionDate = DateTimeOffset.UtcNow;
 
+            // Fetch Azure tables
             var account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageConnectionString"]);
             var tableClient = account.CreateCloudTableClient();
             var assignmentsTable = tableClient.GetTableReference("assignments");
@@ -46,33 +52,41 @@ namespace Recognizr.AzureMobileApp.Controllers
             var highscoresTable = tableClient.GetTableReference("highscores");
             highscoresTable.CreateIfNotExists();
 
-            bool isMatched = true;
+            // Prepare result variables
+            string cognitiveServicesResults = "No photo submitted, or no assignment with this ID";
+            bool isMatched = false;
             int secondsElapsed = 0;
-            string cognitiveServicesResults = "apple, orange, bowl, 2 smiling people";
 
-            // Check uploaded file with MS Cognitive Services
-            // TODO
-            // Send back tags that MSCS found for fun!
+            // Fish out the assignment this was submitted for
+            var query = new TableQuery<Assignment>()
+                .Where(TableQuery.CombineFilters(
+                    TableQuery.GenerateFilterCondition(nameof(Assignment.PartitionKey), QueryComparisons.Equal, nameof(Assignment)),
+                    TableOperators.And,
+                    TableQuery.GenerateFilterCondition(nameof(Assignment.RowKey), QueryComparisons.Equal, assignmentRowKey)));
+            var executedQuery = assignmentsTable.ExecuteQuery(query);
 
-            if (isMatched)
+            // If the assignment was found and there is a photo, perform check
+            if (photo != null && executedQuery.Any())
             {
-                // Fish out the assignment this was submitted for
-                var query = new TableQuery<Assignment>()
-                    .Where(TableQuery.CombineFilters(
-                        TableQuery.GenerateFilterCondition(nameof(Assignment.PartitionKey), QueryComparisons.Equal, nameof(Assignment)),
-                        TableOperators.And,
-                        TableQuery.GenerateFilterCondition(nameof(Assignment.RowKey), QueryComparisons.Equal, assignmentRowKey)));
-                var executedQuery = assignmentsTable.ExecuteQuery(query);
+                var assignment = executedQuery.First();
 
-                // If we found the assignment, calculate elapsed seconds and save the record
-                if (executedQuery.Any())
+                // Check uploaded file with MS Cognitive Services
+                var client = new VisionServiceClient(ConfigurationManager.AppSettings["ComputerVisionApiKey"]);
+                var photoStream = photo.InputStream;
+                photoStream.Seek(0, SeekOrigin.Begin);
+                var visionResults = await client.GetTagsAsync(photoStream);
+                var tags = visionResults.Tags.Select(t => t.Name).ToList();
+
+                cognitiveServicesResults = string.Join(", ", tags);
+                isMatched = tags.Contains(assignment.AssignmentText);
+                secondsElapsed = (int)Math.Round((submissionDate - assignment.TimeCreated).TotalSeconds);
+
+                // If there is a match, save the highscore
+                if (isMatched)
                 {
-                    var assignment = executedQuery.First();
-
                     var highscore = new Highscore();
                     highscore.TimeCreated = DateTimeOffset.UtcNow;
                     highscore.UserName = userName;
-                    secondsElapsed = (int)Math.Round((submissionDate - assignment.TimeCreated).TotalSeconds);
                     highscore.SecondsElapsed = secondsElapsed;
                     highscore.AssignmentText = assignment.AssignmentText;
 
@@ -83,9 +97,9 @@ namespace Recognizr.AzureMobileApp.Controllers
 
             return JsonConvert.SerializeObject(new
             {
+                cognitiveServicesResults = cognitiveServicesResults,
                 isMatched = isMatched,
-                secondsElapsed = secondsElapsed,
-                cognitiveServicesResults = cognitiveServicesResults
+                secondsElapsed = secondsElapsed
             });
         }
 
@@ -98,7 +112,7 @@ namespace Recognizr.AzureMobileApp.Controllers
 
             var query = new TableQuery<Highscore>();
             var executedQuery = table.ExecuteQuery(query);
-            var results = executedQuery.OrderByDescending(h => h.SecondsElapsed).Take(10).ToList();
+            var results = executedQuery.OrderBy(h => h.SecondsElapsed).Take(10).ToList();
 
             if (results.Any())
             {

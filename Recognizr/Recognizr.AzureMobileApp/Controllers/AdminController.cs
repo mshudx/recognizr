@@ -45,7 +45,7 @@ namespace Recognizr.AzureMobileApp.Controllers
             // Send out push notification to tell clients
             var message = "New Recognizr challenge!";
 
-            var notificationHub = NotificationHubClient.CreateClientFromConnectionString(ConfigurationManager.AppSettings["NotificationHubConnectionString"], "recognizr");
+            var notificationHub = NotificationHubClient.CreateClientFromConnectionString(ConfigurationManager.AppSettings["NotificationHubConnectionString"], ConfigurationManager.AppSettings["NotificationHubName"]);
 
             int windowsCount = -2;
             try
